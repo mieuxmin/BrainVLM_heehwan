@@ -99,6 +99,9 @@ class UMBRELLATrainingConfig:
     wandb_project: str = "umbrella-training"
     wandb_api_key: Optional[str] = None
 
+    # Ablation Experiment 2: replace real images with Gaussian random tensors
+    use_random_images: bool = False
+
     # Evaluation generation settings
     eval_max_new_tokens: int = 256
     eval_temperature: float = 0.7
@@ -165,7 +168,7 @@ class UMBRELLATrainingConfig:
             report_to="wandb" if self.use_wandb else "none",
             load_best_model_at_end=eval_dataset_available,
             #metric_for_best_model="loss" if eval_dataset_available else None,
-            metric_for_best_model="sex_acc",    # NOTE: YOU SHOULD CHANGE REGARDING YOUR TASK
+            metric_for_best_model="acc",
             greater_is_better=True if eval_dataset_available else None,     # NOTE: YOU SHOULD CHANGE REGARDING YOUR TASK
             gradient_checkpointing=self.gradient_checkpointing,
             remove_unused_columns=False,
@@ -264,7 +267,8 @@ class UMBRELLATrainingPipeline:
             max_images=self.config.max_images_per_sample,
             augment=(mode == 'train'),
             modality=self.config.modality,
-            task_filter=self.config.task_filter
+            task_filter=self.config.task_filter,
+            use_random_images=self.config.use_random_images,
         )
         return dataset
 
@@ -329,6 +333,8 @@ def main():
     parser.add_argument('--batch-size', type=int)
     parser.add_argument('--learning-rate', type=float)
     parser.add_argument('--no-wandb', action='store_true')
+    parser.add_argument('--random-images', action='store_true',
+                        help='Ablation Exp 2: replace real brain scans with Gaussian random tensors')
 
     args = parser.parse_args()
 
@@ -347,6 +353,7 @@ def main():
     if args.learning_rate: config.learning_rate = args.learning_rate
     if args.eval_output_dir: config.eval_output_dir = args.eval_output_dir
     if args.no_wandb: config.use_wandb = False
+    if args.random_images: config.use_random_images = True
 
     # Create output dir
     Path(config.output_dir).mkdir(parents=True, exist_ok=True)

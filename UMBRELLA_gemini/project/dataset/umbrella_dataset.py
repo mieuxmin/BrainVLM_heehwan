@@ -108,6 +108,7 @@ class UMBRELLADataset(Dataset):
         max_seq_length: int = 2048,
         img_size: Tuple[int, int, int] = (128, 128, 128),
         max_images_per_sample: int = 8,
+        use_random_images: bool = False,
         **kwargs
     ):
         super().__init__()
@@ -118,6 +119,7 @@ class UMBRELLADataset(Dataset):
         self.max_seq_length = max_seq_length
         self.img_size = img_size
         self.max_images_per_sample = max_images_per_sample
+        self.use_random_images = use_random_images
 
         # reader=None으로 설정하면 MONAI가 파일 형식(nii.gz 등)에 맞춰 자동으로 reader를 선택합니다.
         self.image_loader = LoadImage(reader=None, image_only=True, dtype=np.float32)
@@ -136,6 +138,7 @@ class UMBRELLADataset(Dataset):
         logger.info(f"Max sequence length: {max_seq_length}")
         logger.info(f"Image size: {img_size}")
         logger.info(f"4D images: {self.is_4d}")
+        logger.info(f"Use random images (Ablation Exp 2): {self.use_random_images}")
 
     def _load_dataset(self) -> List[UMBRELLASample]:
         import json
@@ -269,6 +272,14 @@ class UMBRELLADataset(Dataset):
         Returns:
             Tensor of shape (num_scans, C, H, W, D) containing transformed brain scans
         """
+        # Ablation Experiment 2: return Gaussian random tensors instead of real images.
+        # This tests whether model performance comes from the image signal or from
+        # other aspects of the training setup (language, comparison structure, etc.).
+        if self.use_random_images:
+            n_scans = min(len(scan_paths), self.max_images_per_sample)
+            n_scans = max(n_scans, 1)
+            return torch.randn(n_scans, 1, *self.img_size)
+
         scans = []
 
         # 최대 허용 개수만큼만 로드
